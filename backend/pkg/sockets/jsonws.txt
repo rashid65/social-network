@@ -1,0 +1,141 @@
+here i will write every websocket epected 
+request and respond to make it easy
+
+message chat request:
+{
+    "type": "chat",
+    "data": {
+        "recipient_id": "4426879e-2091-4e3b-b67a-279cd0c92830",
+        "content": "Hello! This is a test message",
+        "message_type": "text"
+    },
+    "timestamp": "2025-08-06T19:35:38.381709497+03:00"
+}
+
+message chat respond (thers an acknoweldgment to the user):
+{
+    "type": "chat",
+    "data": {
+        "id": "20250806201646-000000",
+        "chat_id": "1",
+        "sender_id": "4426879e-2091-4e3b-b67a-279cd0c92830",
+        "sender_name": "rashid khalaf",
+        "sender_avatar": "",
+        "content": "Hello! This is a test message",
+        "message_type": "text",
+        "timestamp": "2025-08-06T20:16:46.263213389+03:00",
+        "is_read": false,
+        "recipient_id": "4426879e-2091-4e3b-b67a-279cd0c92830"
+    },
+    "timestamp": "2025-08-06T20:16:46.29588216+03:00"
+}
+
+message-gif request:
+{
+    "type": "gif",
+    "data": {
+        "recipient_id": "4426879e-2091-4e3b-b67a-279cd0c92830",
+        "content": "https://tenor.com/view/darryl-the-office-darryl-philbin-the-office-yay-yay-gif-yay-gif-25696872",
+        "message_type": "gif"
+    },
+    "timestamp": "2025-08-06T19:35:38.381709497+03:00"
+}
+
+message-gif respond:
+{
+    "type": "gif",
+    "data": {
+        "id": "20250807174239-000000",
+        "chat_id": "1",
+        "sender_id": "4426879e-2091-4e3b-b67a-279cd0c92830",
+        "sender_name": "rashid khalaf",
+        "sender_avatar": "",
+        "content": "https://tenor.com/view/darryl-the-office-darryl-philbin-the-office-yay-yay-gif-yay-gif-25696872",
+        "message_type": "media",
+        "timestamp": "2025-08-07T17:42:39.567735218+03:00",
+        "is_read": false,
+        "recipient_id": "4426879e-2091-4e3b-b67a-279cd0c92830"
+    },
+    "timestamp": "2025-08-07T17:42:39.61961699+03:00"
+}
+
+
+message-read request:
+{
+    "type": "messages_read",
+    "data": {
+        "chat_id": "1",
+        "message_ids": ["3"],
+        "user_id": "def9c1ce-a06c-4c7d-970d-be16763bfdd0"
+    },
+    "timestamp": "2025-08-06T19:35:38.406466448+03:00"
+}
+
+message-read respond:
+{
+    "type": "messages_read",
+    "data": {
+        "chat_id": "1",
+        "message_ids": [
+            "3"
+        ],
+        "user_id": "4426879e-2091-4e3b-b67a-279cd0c92830"
+    },
+    "timestamp": "2025-08-06T20:13:58.746288511+03:00"
+}
+
+online-users request:
+{
+    "type": "online_users",
+    "data": {}
+}
+
+online-users response:
+{
+    "type": "online_users",
+    "data": [
+        "def9c1ce-a06c-4c7d-970d-be16763bfdd0"
+    ],
+    "timestamp": "2025-08-18T17:38:14.719831885+03:00"
+}
+
+
+chat-list request:
+{
+    "type": "chat_list",
+    "data": {}
+}
+
+chat-list response:
+{
+    "type": "chat_list",
+    "data": {
+        "chats": [
+            {
+                "id": "1",
+                "type": "private",
+                "name": "rashid khalaf",
+                "avatar": "",
+                "participants": [
+                    "4426879e-2091-4e3b-b67a-279cd0c92830",
+                    "def9c1ce-a06c-4c7d-970d-be16763bfdd0"
+                ],
+                "unread_count": 0,
+                "is_online": false
+            }
+        ]
+    },
+    "timestamp": "2025-08-18T17:38:31.776915581+03:00"
+}
+
+#added ----------------------------------------
+New types to be added to notification db:
+- follow_request
+- follow_success
+- follow (after request or public profile)
+- follow_accepted
+- follow_rejected
+- unfollow
+- group_invitation
+- group_invitation_response
+- group_event_created

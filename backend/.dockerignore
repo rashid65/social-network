@@ -1,0 +1,7 @@
+.git
+*.md
+Dockerfile
+.dockerignore
+*.db
+*.db.wal
+*.db-shm

@@ -1,0 +1,199 @@
+-- migrations/sqlite/000001_init_schema.up.sql
+
+PRAGMA foreign_keys = OFF;
+BEGIN TRANSACTION;
+
+-- Users
+CREATE TABLE users (
+  id              TEXT      PRIMARY KEY,
+  email           TEXT      NOT NULL UNIQUE,
+  password_hash   TEXT      NOT NULL,
+  first_name      TEXT      NOT NULL,
+  last_name       TEXT      NOT NULL,
+  date_of_birth   TEXT      NOT NULL,            -- stored as ISO‑8601 string
+  nickname        TEXT      NULL,
+  about_me        TEXT      NULL,
+  avatar_path     TEXT      NULL,
+  is_public       INTEGER   NOT NULL DEFAULT 1,  -- 1 = public, 0 = private
+  created_at      TEXT      NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sessions
+CREATE TABLE sessions (
+  id           TEXT    PRIMARY KEY,
+  user_id      TEXT    NOT NULL,
+  token        TEXT    NOT NULL UNIQUE,
+  created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at   TEXT    NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Follow requests
+CREATE TABLE follow_requests (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  requester_id  TEXT    NOT NULL,
+  recipient_id  TEXT    NOT NULL,
+  status        TEXT    NOT NULL CHECK(status IN ('pending','accepted','declined')),
+  created_at    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  responded_at  TEXT    NULL,
+  FOREIGN KEY(requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(recipient_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Followers (accepted relationships)
+CREATE TABLE followers (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  follower_id  TEXT    NOT NULL,
+  followee_id  TEXT    NOT NULL,
+  created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(follower_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(followee_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(follower_id, followee_id)
+);
+
+-- Posts
+CREATE TABLE posts (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id   TEXT    NOT NULL,
+  content     TEXT    NOT NULL,
+  privacy     TEXT    NOT NULL CHECK(privacy IN ('public','followers','custom')),
+  created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Post media (images/GIFs)
+CREATE TABLE post_media (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id     INTEGER NOT NULL,
+  media_type  TEXT    NOT NULL,   -- e.g. 'image/jpeg', 'image/png', 'image/gif'
+  file_path   TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE
+);
+
+-- Comments on posts
+CREATE TABLE comments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id     INTEGER NOT NULL,
+  author_id   TEXT    NOT NULL,
+  content     TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY(author_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Groups
+CREATE TABLE groups (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  creator_id  TEXT    NOT NULL,
+  title       TEXT    NOT NULL,
+  description TEXT    NOT NULL,
+  is_public   INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Group invitations
+CREATE TABLE group_invitations (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id     INTEGER NOT NULL,
+  inviter_id   TEXT    NOT NULL,
+  invitee_id   TEXT    NOT NULL,
+  status       TEXT    NOT NULL CHECK(status IN ('pending','accepted','declined')),
+  created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  responded_at TEXT    NULL,
+  FOREIGN KEY(group_id)   REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY(inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(invitee_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Group memberships
+CREATE TABLE group_memberships (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id   INTEGER NOT NULL,
+  user_id    TEXT    NOT NULL,
+  role       TEXT    NOT NULL CHECK(role IN ('member','admin')),
+  joined_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id)  REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(group_id, user_id)
+);
+
+-- Events in groups
+CREATE TABLE events (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id     INTEGER NOT NULL,
+  creator_id   TEXT    NOT NULL,
+  title        TEXT    NOT NULL,
+  description  TEXT    NOT NULL,
+  event_time   TEXT    NOT NULL,             -- ISO‑8601 datetime
+  created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(group_id)   REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY(creator_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Event responses (RSVP)
+CREATE TABLE event_responses (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id     INTEGER NOT NULL,
+  user_id      TEXT    NOT NULL,
+  response     TEXT    NOT NULL CHECK(response IN ('going','not_going')),
+  responded_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(event_id) REFERENCES events(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id)  REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(event_id, user_id)
+);
+
+-- Chat threads (1:1 or group)
+CREATE TABLE chat_threads (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  is_group   INTEGER NOT NULL DEFAULT 0,
+  group_id   INTEGER NULL,   -- if group chat
+  created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+);
+
+-- Chat participants
+CREATE TABLE chat_participants (
+  chat_id  INTEGER NOT NULL,
+  user_id  TEXT    NOT NULL,
+  PRIMARY KEY(chat_id, user_id),
+  FOREIGN KEY(chat_id) REFERENCES chat_threads(id) ON DELETE CASCADE,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Messages
+CREATE TABLE messages (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  chat_id      INTEGER NOT NULL,
+  sender_id    TEXT    NOT NULL,
+  content      TEXT    NOT NULL,
+  message_type TEXT    NOT NULL CHECK(message_type IN ('text','emoji','media')),
+  created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(chat_id)   REFERENCES chat_threads(id) ON DELETE CASCADE,
+  FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Message media attachments
+CREATE TABLE message_media (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id  INTEGER NOT NULL,
+  file_path   TEXT    NOT NULL,
+  created_at  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+
+-- Notifications
+CREATE TABLE notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    TEXT    NOT NULL,  -- who is notified
+  type       TEXT    NOT NULL CHECK(type IN ('follow_request','group_invite','group_join_request','event','chat_message','other')),
+  ref_id     TEXT    NOT NULL,  -- references the triggering record’s PK
+  is_read    INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+COMMIT;
+PRAGMA foreign_keys = ON;
